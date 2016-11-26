@@ -20,7 +20,8 @@ type Logger interface {
 // http.ResponseWriter by original handler, whichever comes first.
 //
 // ResponseWriter original handler sees does not implement http.Hijacker
-// interface.
+// interface, but implements http.Flusher interface which calls underlying
+// writer Flush() method if it's implemented.
 func WithCustomLog(h http.Handler, fn LogFunc) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h.ServeHTTP(&loggingResponseWriter{w: w, log: fn(r)}, r)
@@ -63,4 +64,9 @@ func (rw *loggingResponseWriter) Write(b []byte) (int, error) {
 		rw.log = nil
 	}
 	return rw.w.Write(b)
+}
+func (rw *loggingResponseWriter) Flush() {
+	if f, ok := rw.w.(http.Flusher); ok {
+		f.Flush()
+	}
 }
